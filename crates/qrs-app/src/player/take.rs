@@ -1145,7 +1145,7 @@ impl PlayerView {
             Align2::LEFT_TOP,
             Some((x + w - br.max.x - px(10.0)).max(px(20.0))),
         );
-        let timing = bass_feedback::timing_line(timing_words(r), r.is_bass, r.timing.n, r.timing.spread_ms);
+        let timing = bass_feedback::timing_line(&timing_words(r), r.is_bass, r.timing.n, r.timing.spread_ms);
         txt(
             p,
             &timing,

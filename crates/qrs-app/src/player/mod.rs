@@ -3510,10 +3510,6 @@ impl PlayerView {
         let draw_now = self.draw_now();
         let (main, aside) = Self::layout(area);
         let foot = px(76.0);
-        let show_bass_meter = self.transport.playing() && self.chart.arr.is_bass;
-        let bass_timing = show_bass_meter
-            .then(|| bass_live::timing(&self.scorer.groups, qrs_audio::clock::now_ns() as f64 / 1e9))
-            .flatten();
         let well = if self.tab_full && self.hw_on && !theme::classic() {
             // the highway's full screen: the whole window, edge to edge (P47.1, owner: the margin and the tab's
             // scrollbar groove left it off-centre, with a strip on the right)
@@ -3556,12 +3552,6 @@ impl PlayerView {
         } else {
             (None, well)
         };
-        let bass_meter_area = show_bass_meter.then(|| {
-            Rect::from_min_size(
-                ipos(well.min.x, well.min.y + px(10.0)),
-                vec2(well.width(), px(82.0)),
-            )
-        });
         let groove = Rect::from_min_size(
             ipos(well.max.x + px(14.0), well.min.y),
             vec2(px(10.0), well.height()),
@@ -3615,8 +3605,12 @@ impl PlayerView {
         for a in tab_acts {
             self.tab_act(a);
         }
-        if let Some(r) = bass_meter_area {
-            bass_live::draw(ui.painter(), r, bass_timing.as_ref());
+        if self.tab_full
+            && self.hw_on
+            && !self.overlay_up()
+            && let Some(p) = self.bass_pocket()
+        {
+            bass_live::draw(ui.painter(), well, &p);
         }
         self.draw_coach_well(ui, well); // (a theory page over the tab, or a lesson's callouts on it)
         if theme::classic() {
@@ -4288,6 +4282,13 @@ impl PlayerView {
         r
     }
 
+    /// The live pocket while a bass part plays: the last few right notes' mean and spread.
+    fn bass_pocket(&self) -> Option<bass_live::Timing> {
+        (self.transport.playing() && self.chart.arr.is_bass)
+            .then(|| bass_live::timing(&self.scorer.groups, qrs_audio::clock::now_ns() as f64 / 1e9))
+            .flatten()
+    }
+
     /// The guitar input in a sunken strip ending at `right`: the pick (click it: dark or light), a light, the
     /// device, its level as LEDs and what you hear. Returns the strip.
     fn draw_status(&mut self, ui: &Ui, st: &AppState, right: f32, y: f32, max_w: f32) -> Rect {
@@ -4365,6 +4366,9 @@ impl PlayerView {
                     }
                 }
             }
+        }
+        if let Some(p) = self.bass_pocket() {
+            items.push(It::Text(bass_live::line(&p), bass_live::mood(p.mean_ms), 700));
         }
         // what's away from normal: easier, the sync and the guitar's timing
         if self.mastery < 0.999 {

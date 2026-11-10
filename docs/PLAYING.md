@@ -199,9 +199,10 @@ down-strums count, while a wrong shape doesn't.
 For good scoring, [calibrate your input](AUDIO-SETUP.md#calibrating-your-input)
 and check [timing](AUDIO-SETUP.md#timing).
 
-While playing a bass part, a large live pocket meter sits over the top of the
-note area. It shows early/on-time/late, the average offset and spread from up
-to the latest eight clear notes; no take is needed.
+While playing a bass part, the header's status line shows the live pocket: the
+average offset and spread (`pocket +12 ±8 ms`) from up to the latest eight
+clear notes, coloured green in pocket, amber close and red off. In full screen
+it moves to a small plate under the streak; no take is needed.
 
 
 ### Takes

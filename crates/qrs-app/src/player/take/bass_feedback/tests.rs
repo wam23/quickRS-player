@@ -4,13 +4,13 @@ use qrs_analysis::take::BarResult;
 
 #[test]
 fn pocket_summary_is_bass_only_and_needs_enough_notes() {
-    let timing = "dragging: 24 ms late on average".to_string();
+    let timing = "dragging: 24 ms late on average";
     assert_eq!(
-        timing_line(timing.clone(), true, 3, 26.0),
+        timing_line(timing, true, 3, 26.0),
         "dragging: 24 ms late on average  ·  pocket spread 26 ms"
     );
-    assert_eq!(timing_line(timing.clone(), true, 2, 26.0), timing);
-    assert_eq!(timing_line("on time".into(), false, 10, 26.0), "on time");
+    assert_eq!(timing_line(timing, true, 2, 26.0), timing);
+    assert_eq!(timing_line("on time", false, 10, 26.0), "on time");
 }
 
 #[test]

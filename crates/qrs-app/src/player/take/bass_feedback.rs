@@ -1,10 +1,10 @@
 use qrs_analysis::take::BarResult;
 
-pub(super) fn timing_line(timing: String, is_bass: bool, notes: usize, spread_ms: f64) -> String {
+pub(super) fn timing_line(timing: &str, is_bass: bool, notes: usize, spread_ms: f64) -> String {
     if is_bass && notes >= 3 {
         format!("{timing}  ·  pocket spread {spread_ms:.0} ms")
     } else {
-        timing
+        timing.to_owned()
     }
 }
 

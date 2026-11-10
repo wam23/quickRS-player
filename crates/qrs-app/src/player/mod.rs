@@ -6,6 +6,7 @@
 //! notebynote.rs: the song waits at each note until you play it).
 
 mod arcade;
+mod bass_live;
 pub mod board;
 pub mod coach;
 mod continuous;
@@ -3509,6 +3510,10 @@ impl PlayerView {
         let draw_now = self.draw_now();
         let (main, aside) = Self::layout(area);
         let foot = px(76.0);
+        let show_bass_meter = self.transport.playing() && self.chart.arr.is_bass;
+        let bass_timing = show_bass_meter
+            .then(|| bass_live::timing(&self.scorer.groups, qrs_audio::clock::now_ns() as f64 / 1e9))
+            .flatten();
         let well = if self.tab_full && self.hw_on && !theme::classic() {
             // the highway's full screen: the whole window, edge to edge (P47.1, owner: the margin and the tab's
             // scrollbar groove left it off-centre, with a strip on the right)
@@ -3551,6 +3556,12 @@ impl PlayerView {
         } else {
             (None, well)
         };
+        let bass_meter_area = show_bass_meter.then(|| {
+            Rect::from_min_size(
+                ipos(well.min.x, well.min.y + px(10.0)),
+                vec2(well.width(), px(82.0)),
+            )
+        });
         let groove = Rect::from_min_size(
             ipos(well.max.x + px(14.0), well.min.y),
             vec2(px(10.0), well.height()),
@@ -3603,6 +3614,9 @@ impl PlayerView {
         };
         for a in tab_acts {
             self.tab_act(a);
+        }
+        if let Some(r) = bass_meter_area {
+            bass_live::draw(ui.painter(), r, bass_timing.as_ref());
         }
         self.draw_coach_well(ui, well); // (a theory page over the tab, or a lesson's callouts on it)
         if theme::classic() {

@@ -43,6 +43,9 @@ use crate::pitch::{hz_to_midi, midi_to_hz, mpm_pitch};
 use crate::similar::Bars;
 use crate::spectrum::{Spectra, median};
 
+mod bass;
+pub use bass::HoldIssue;
+
 /// Seconds (wall clock) a pluck may come before / after its note and still be taken for it.
 pub const EARLY: f64 = 0.2;
 pub const LATE: f64 = 0.35;
@@ -326,6 +329,8 @@ pub struct EventResult {
     pub sample: Option<usize>,
     /// A remark: "bend reached +1.0 of +2", "hammer-on heard without a pluck", "slide not checked"...
     pub note: Option<String>,
+    /// A clearly audible bass note that faded before, or rang past, its charted length.
+    pub hold: Option<HoldIssue>,
 }
 
 /// A pluck that played no chart note.
@@ -402,6 +407,7 @@ pub struct TakeReport {
     pub artist: String,
     pub title: String,
     pub part: String,
+    pub is_bass: bool,
     pub from: f64,
     pub to: f64,
     pub speed: f64,
@@ -772,7 +778,7 @@ fn clusters(evs: &[Ev], speed: f64) -> (Vec<Ev>, Vec<Vec<usize>>) {
 
 /// Spectra of take windows, kept for a while (neighbouring events check the same plucks).
 struct SpecCache {
-    map: HashMap<(usize, usize), Arc<Vec<f64>>>,
+    map: HashMap<(usize, usize), (Arc<Vec<f64>>, f64)>,
     binhz: f64,
 }
 
@@ -788,7 +794,8 @@ impl SpecCache {
         if start + n > x.len() || n < 64 {
             return None;
         }
-        if let Some(v) = self.map.get(&(start, n)) {
+        if let Some((v, binhz)) = self.map.get(&(start, n)) {
+            self.binhz = *binhz;
             return Some(v.clone());
         }
         if self.map.len() > 192 {
@@ -797,7 +804,7 @@ impl SpecCache {
         let (mag, binhz) = sp.spectrum(&x[start..start + n], rate);
         self.binhz = binhz;
         let v = Arc::new(mag);
-        self.map.insert((start, n), v.clone());
+        self.map.insert((start, n), (v.clone(), binhz));
         Some(v)
     }
 }
@@ -1161,6 +1168,7 @@ pub fn analyse(input: &TakeInput, progress: &dyn Fn(f32), cancel: &AtomicBool) -
             offset_ms: None,
             sample: None,
             note: None,
+            hold: None,
         };
         // the next pluck after this event's (bounds the window for transcribing)
         match matched[i] {
@@ -1224,6 +1232,15 @@ pub fn analyse(input: &TakeInput, progress: &dyn Fn(f32), cancel: &AtomicBool) -
                         .or_else(|| exp.get(i + 1).map(|&e| (e + shift).max(0.0) as usize))
                         .unwrap_or(x.len());
                     follow_bend_and_slide(&mut ctx, e, &neck, s, until, timing.speed, &mut r);
+                    if arr.is_bass {
+                        let duration =
+                            (timing.sample_at(e.t + e.sustain()) - timing.sample_at(e.t)).max(0.0) as usize;
+                        let previous_end = i.checked_sub(1).map(|k| {
+                            (timing.sample_at(evs[k].t + evs[k].sustain()) + shift).max(0.0) as usize
+                        });
+                        let next = exp.get(i + 1).map(|&t| (t + shift).max(0.0) as usize);
+                        r.hold = bass::hold_issue(&mut ctx, e, s0, duration, previous_end, next, &ons);
+                    }
                 }
             }
             None => {
@@ -1397,6 +1414,7 @@ pub fn analyse(input: &TakeInput, progress: &dyn Fn(f32), cancel: &AtomicBool) -
         artist: arr.artist.clone(),
         title: arr.title.clone(),
         part: arr.name.clone(),
+        is_bass: arr.is_bass,
         from: input.from,
         to: input.to,
         speed: timing.speed,
@@ -1453,6 +1471,7 @@ fn expand(
                 } else {
                     Some("with the note before (a grace note or a rake)".into())
                 },
+                hold: if k == 0 { r.hold } else { None },
             };
             match r.status {
                 Status::Hit => er.played = expected.clone(),
@@ -2158,6 +2177,7 @@ pub fn problems(r: &TakeReport) -> Vec<String> {
             ));
         }
     }
+    out.extend(bass::problems(r));
     // extras
     if r.extras.len() >= 2 || (r.extras.len() == 1 && r.events.len() < 30) {
         let bars: Vec<usize> = r
@@ -2383,7 +2403,7 @@ impl TakeReport {
                       nothing here could be checked). 'bar' is 1-based within the stretch; 'measure' is the \
                       chart's measure number, which the problems use.",
             "song": {"artist": self.artist, "title": self.title, "part": self.part,
-                     "tuning": n.labels.clone()},
+                     "tuning": n.labels.clone(), "is_bass": self.is_bass},
             "stretch": {"from": r3(self.from), "to": r3(self.to)},
             "speed": self.speed,
             "take": {"seconds": r3(self.seconds), "rate": self.rate, "peak": r3(self.peak as f64),
@@ -2427,6 +2447,9 @@ impl TakeReport {
                     "played": e.played.iter().map(|p| pos_json(n, p)).collect::<Vec<_>>(),
                     "offset_ms": e.offset_ms.map(r1),
                 });
+                if let Some(issue) = e.hold {
+                    v["hold"] = json!(issue.key());
+                }
                 if !e.chord_name.trim().is_empty() {
                     v["chord"] = json!(e.chord_name.trim());
                 }

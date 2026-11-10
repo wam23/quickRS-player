@@ -199,6 +199,10 @@ down-strums count, while a wrong shape doesn't.
 For good scoring, [calibrate your input](AUDIO-SETUP.md#calibrating-your-input)
 and check [timing](AUDIO-SETUP.md#timing).
 
+While playing a bass part, a large live pocket meter sits over the top of the
+note area. It shows early/on-time/late, the average offset and spread from up
+to the latest eight clear notes; no take is needed.
+
 
 ### Takes
 
@@ -210,6 +214,11 @@ The result card shows accuracy and timing, the bars coloured by how they went
 (click one to go there), and the problems in words, by bar number. On the tab,
 your notes are drawn over the chart: right, early, late, wrong (with the fret
 you played) and missed. `B` plays the take back over the song.
+
+For bass takes, the timing line includes pocket spread; hover over a bar to see
+its timing offset. Clear, isolated held notes are also checked for fading out
+before their charted length or ringing past it. Ambiguous and overlapping notes
+are left unchecked.
 
 The analysis is done on your computer, without AI or a server. When it can't
 hear a note clearly (a quick hammer-on, a muted strum) it gives you the benefit

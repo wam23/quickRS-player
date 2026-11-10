@@ -35,6 +35,8 @@ use super::{LOOP_LEAD_IN, PlayerView};
 use crate::library::{caps, txt};
 use crate::state::AppState;
 
+mod bass_feedback;
+
 /// Seconds of guitar kept after the stretch's end (its last note rings, a late pluck still counts).
 const TAIL: f32 = 0.45;
 /// Listen back: the song's level under the take.
@@ -1143,9 +1145,10 @@ impl PlayerView {
             Align2::LEFT_TOP,
             Some((x + w - br.max.x - px(10.0)).max(px(20.0))),
         );
+        let timing = bass_feedback::timing_line(timing_words(r), r.is_bass, r.timing.n, r.timing.spread_ms);
         txt(
             p,
-            &timing_words(r),
+            &timing,
             pos2(br.max.x + px(10.0), br.min.y + px(21.0)),
             12.0,
             th.caption,
@@ -1178,10 +1181,7 @@ impl PlayerView {
                     Stroke::new(px(1.5), th.text),
                     egui::StrokeKind::Outside,
                 );
-                let tip = match b.accuracy() {
-                    Some(a) => format!("bar {}: {}%", b.number, (a * 100.0).round() as i64),
-                    None => format!("bar {}: nothing checked", b.number),
-                };
+                let tip = bass_feedback::bar_tooltip(b, r.is_bass);
                 txt(
                     p,
                     &tip,
@@ -1405,6 +1405,7 @@ pub fn synthetic_report(
             offset_ms: offset,
             sample: None,
             note: None,
+            hold: None,
         });
         if i % 17 == 9
             && let Some(e) = events.last().and_then(|e| e.expected.first())
@@ -1461,6 +1462,7 @@ pub fn synthetic_report(
         artist: String::new(),
         title: String::new(),
         part: arr.name.clone(),
+        is_bass: arr.is_bass,
         from: a,
         to: b,
         speed,

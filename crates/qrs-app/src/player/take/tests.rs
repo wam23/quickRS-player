@@ -134,6 +134,7 @@ fn report_of(statuses: &[(f64, Status, Option<f64>)]) -> TakeReport {
         artist: String::new(),
         title: String::new(),
         part: "Lead".into(),
+        is_bass: false,
         from: 0.0,
         to: 10.0,
         speed: 1.0,
@@ -158,6 +159,7 @@ fn report_of(statuses: &[(f64, Status, Option<f64>)]) -> TakeReport {
                 offset_ms,
                 sample: None,
                 note: None,
+                hold: None,
             })
             .collect(),
         neck,

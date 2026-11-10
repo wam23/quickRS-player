@@ -164,7 +164,11 @@ fn main() -> anyhow::Result<()> {
         None => first_size(),
     };
     let mut viewport = egui::ViewportBuilder::default()
-        .with_title("quickRS Bristol 2026")
+        .with_title(format!(
+            "quickRS Bristol 2026 · {} · {}",
+            env!("QUICKRS_BUILD_DATE"),
+            env!("QUICKRS_GIT_HASH")
+        ))
         // (Linux: the desktop matches the window to quickrs.desktop, its name and icon, by this)
         .with_app_id("quickrs")
         .with_inner_size(size)
